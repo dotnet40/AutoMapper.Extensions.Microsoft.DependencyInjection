@@ -170,17 +170,17 @@
 
         public static IServiceCollection AddAutoMapper(this IServiceCollection services, params Type[] profileAssemblyMarkerTypes)
         {
-            return AddAutoMapperClasses(services, null, profileAssemblyMarkerTypes.Select(t => t.GetTypeInfo().Assembly));
+            return AddAutoMapperClasses(services, null, profileAssemblyMarkerTypes.Select(t => t.Assembly));
         }
 
         public static IServiceCollection AddAutoMapper(this IServiceCollection services, Action<IMapperConfigurationExpression> additionalInitAction, params Type[] profileAssemblyMarkerTypes)
         {
-            return AddAutoMapperClasses(services, additionalInitAction, profileAssemblyMarkerTypes.Select(t => t.GetTypeInfo().Assembly));
+            return AddAutoMapperClasses(services, additionalInitAction, profileAssemblyMarkerTypes.Select(t => t.Assembly));
         }
 
         public static IServiceCollection AddAutoMapper(this IServiceCollection services, Action<IMapperConfigurationExpression> additionalInitAction, IEnumerable<Type> profileAssemblyMarkerTypes)
         {
-            return AddAutoMapperClasses(services, additionalInitAction, profileAssemblyMarkerTypes.Select(t => t.GetTypeInfo().Assembly));
+            return AddAutoMapperClasses(services, additionalInitAction, profileAssemblyMarkerTypes.Select(t => t.Assembly));
         }
 
 
@@ -191,19 +191,19 @@
 
             var allTypes = assembliesToScan
                 .Where(a => a.GetName().Name != nameof(AutoMapper))
-                .SelectMany(a => a.DefinedTypes)
+                .SelectMany(a => a.GetDefinedTypes())
                 .ToArray();
 
             var profiles =
                 allTypes
-                    .Where(t => typeof(Profile).GetTypeInfo().IsAssignableFrom(t))
+                    .Where(t => typeof(Profile).IsAssignableFrom(t))
                     .Where(t => !t.IsAbstract);
 
             Mapper.Initialize(cfg =>
             {
                 additionalInitAction(cfg);
 
-                foreach (var profile in profiles.Select(t => t.AsType()))
+                foreach (var profile in profiles.Select(t => t))
                 {
                     cfg.AddProfile(profile);
                 }
@@ -218,9 +218,9 @@
             foreach (var type in openTypes.SelectMany(openType => allTypes
                 .Where(t => t.IsClass)
                 .Where(t => !t.IsAbstract)
-                .Where(t => t.AsType().ImplementsGenericInterface(openType))))
+                .Where(t => t.ImplementsGenericInterface(openType))))
             {
-                services.AddTransient(type.AsType());
+                services.AddTransient(type);
             }
 
             services.AddSingleton(Mapper.Configuration);
@@ -229,10 +229,10 @@
 
         private static bool ImplementsGenericInterface(this Type type, Type interfaceType)
         {
-            return type.IsGenericType(interfaceType) || type.GetTypeInfo().ImplementedInterfaces.Any(@interface => @interface.IsGenericType(interfaceType));
+            return type.IsGenericType(interfaceType) || type.GetInterfaces().Any(@interface => @interface.IsGenericType(interfaceType));
         }
 
         private static bool IsGenericType(this Type type, Type genericType)
-            => type.GetTypeInfo().IsGenericType && type.GetGenericTypeDefinition() == genericType;
+            => type.IsGenericType && type.GetGenericTypeDefinition() == genericType;
     }
 }
